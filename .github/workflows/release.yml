@@ -3,11 +3,12 @@ on:
   workflow_dispatch:
     inputs:
       operation:
-        description: Prepare a draft and PR, or publish after merging the PR
+        description: Prepare a draft, resume PR creation, or publish after merging
         required: true
         type: choice
         options:
           - prepare
+          - resume
           - publish
       version:
         description: New semantic version tag (for example, v3.1.0-spm.1)

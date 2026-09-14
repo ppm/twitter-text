@@ -26,6 +26,11 @@ The ZIP preserves framework symlinks and includes both library licenses.
 The workflow selects Xcode 16.4 on macos-15; change these together when updating
 build tools. Existing releases and tags are never overwritten by publication.
 
-If preparation fails after creating its draft or branch, inspect the failed step.
-Resolve its cause and remove that unpublished draft/branch before preparing the
-same version again, or use a new version.
+If preparation fails at PR creation after pushing the release branch, resolve
+the reported cause and run `resume` with the same version. It verifies the existing
+draft ZIP, manifest, and branch, then creates the missing PR. The draft assets and
+branch are reused. An existing PR is reported instead of creating another one.
+
+Publication permits changes to these release automation files since preparation:
+`scripts/release.py`, `.github/workflows/release.yml`, and `.github/RELEASING.md`.
+Other files except Package.swift must still match the build source commit.
