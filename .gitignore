@@ -6,3 +6,7 @@ java/.idea
 twitter-text.iml
 .DS_Store
 *.sw?
+
+# Swift package and release build products
+/build/
+/.build/
