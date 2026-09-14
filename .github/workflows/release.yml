@@ -1,0 +1,56 @@
+name: Release XCFramework
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Prepare a draft and PR, or publish after merging the PR
+        required: true
+        type: choice
+        options:
+          - prepare
+          - publish
+      version:
+        description: New semantic version tag (for example, v3.1.0-spm.1)
+        required: true
+        type: string
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: release-xcframework
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: macos-15
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_OPERATION: ${{ inputs.operation }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build frameworks
+        if: inputs.operation == 'prepare'
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          for sdk in iphoneos iphonesimulator macosx; do
+            scheme=TwitterText
+            if [[ "$sdk" == macosx ]]; then scheme='TwitterText Mac'; fi
+            xcodebuild build -project objc/TwitterText.xcodeproj -scheme "$scheme" \
+              -configuration Release -sdk "$sdk" -derivedDataPath "$PWD/build/DerivedData" \
+              BUILD_LIBRARY_FOR_DISTRIBUTION=YES SKIP_INSTALL=NO \
+              CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=NO APPLICATION_EXTENSION_API_ONLY=YES
+          done
+          python3 scripts/release.py package --products build/DerivedData/Build/Products
+      - name: Prepare or publish release
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          python3 scripts/release.py "$RELEASE_OPERATION" \
+            --repository "$GITHUB_REPOSITORY" --version "$RELEASE_VERSION"
