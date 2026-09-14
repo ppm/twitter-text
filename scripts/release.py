@@ -80,6 +80,35 @@ def prepare(repository, version):
               '--title', f'Publish TwitterText binary package {version}', '--body-file', str(notes)))
 
 
+def resume(repository, version):
+    release = json.loads(run('gh', 'release', 'view', version, '--repo', repository,
+                             '--json', 'isDraft,targetCommitish,body'))
+    if not release['isDraft']:
+        raise SystemExit('Release is already published.')
+    branch = f'release/{version}'
+    run('git', 'fetch', 'origin', f'refs/heads/{branch}')
+    source = release['targetCommitish']
+    run('git', 'merge-base', '--is-ancestor', source, 'FETCH_HEAD')
+    run('git', 'diff', '--exit-code', source, 'FETCH_HEAD', '--', '.', ':(exclude)Package.swift')
+    destination = Path('build/resume')
+    destination.mkdir(parents=True, exist_ok=False)
+    run('gh', 'release', 'download', version, '--repo', repository, '--dir', str(destination))
+    checksum = run('swift', 'package', 'compute-checksum', str(destination / 'TwitterText.xcframework.zip'))
+    expected = manifest(repository, version, checksum)
+    if run('git', 'show', 'FETCH_HEAD:Package.swift') != expected.strip() or (destination / 'Package.swift').read_text() != expected:
+        raise SystemExit('Release branch does not match the draft assets.')
+    existing = json.loads(run('gh', 'pr', 'list', '--repo', repository, '--head', branch,
+                              '--state', 'all', '--json', 'url'))
+    if existing:
+        print(existing[0]['url'])
+        return
+    notes = destination / 'notes.md'
+    notes.write_text(release['body'])
+    base = run('gh', 'repo', 'view', repository, '--json', 'defaultBranchRef', '--jq', '.defaultBranchRef.name')
+    print(run('gh', 'pr', 'create', '--repo', repository, '--base', base, '--head', branch,
+              '--title', f'Publish TwitterText binary package {version}', '--body-file', str(notes)))
+
+
 def publish(repository, version):
     release = json.loads(run('gh', 'release', 'view', version, '--repo', repository,
                              '--json', 'isDraft,targetCommitish'))
@@ -87,7 +116,9 @@ def publish(repository, version):
         raise SystemExit('Release is already published.')
     source = release['targetCommitish']
     run('git', 'merge-base', '--is-ancestor', source, 'HEAD')
-    run('git', 'diff', '--exit-code', source, 'HEAD', '--', '.', ':(exclude)Package.swift')
+    run('git', 'diff', '--exit-code', source, 'HEAD', '--', '.', ':(exclude)Package.swift',
+        ':(exclude)scripts/release.py', ':(exclude).github/workflows/release.yml',
+        ':(exclude).github/RELEASING.md')
     destination = Path('build/publish')
     destination.mkdir(parents=True, exist_ok=False)
     run('gh', 'release', 'download', version, '--repo', repository, '--dir', str(destination))
@@ -103,7 +134,7 @@ def publish(repository, version):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('operation', choices=['package', 'prepare', 'publish'])
+    parser.add_argument('operation', choices=['package', 'prepare', 'resume', 'publish'])
     parser.add_argument('--products', type=Path)
     parser.add_argument('--repository')
     parser.add_argument('--version')
@@ -115,4 +146,4 @@ if __name__ == '__main__':
     else:
         if not args.repository or not args.version or not re.fullmatch(r'v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?', args.version):
             parser.error('--repository and a semantic --version are required')
-        {'prepare': prepare, 'publish': publish}[args.operation](args.repository, args.version)
+        {'prepare': prepare, 'resume': resume, 'publish': publish}[args.operation](args.repository, args.version)
