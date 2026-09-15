@@ -50,8 +50,9 @@ def package(products):
     for configuration in ['Release-iphoneos', 'Release-iphonesimulator', 'Release']:
         args += ['-framework', str(products.resolve() / configuration / 'TwitterText.framework')]
     run(*args, '-output', str(framework))
-    shutil.copy('LICENSE', framework / 'LICENSE')
+    shutil.copy('objc/LICENSE', framework / 'LICENSE')
     shutil.copy('objc/ThirdParty/IFUnicodeURL/IFUnicodeURL-LICENSE.txt', framework)
+    shutil.copy('scripts/licenses/IDNSDK-LICENSE.txt', framework)
     archive = destination / 'TwitterText.xcframework.zip'
     run('ditto', '-c', '-k', '--keepParent', str(framework), str(archive))
     return archive
