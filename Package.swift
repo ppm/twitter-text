@@ -15,8 +15,8 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "TwitterText",
-            url: "https://github.com/ppm/twitter-text/releases/download/v3.1.0-spm.1/TwitterText.xcframework.zip",
-            checksum: "bd40b520ef36f56a7bf7e2e814d5289acb58b009bfb3332abc152bf2dd318949"
+            url: "https://github.com/ppm/twitter-text/releases/download/v3.1.0-spm.2/TwitterText.xcframework.zip",
+            checksum: "765cd9c52c019b4f41e20fc9e5449f40a3f6cb9b2393ee8c9eecf76ed13a87e9"
         )
     ]
 )
